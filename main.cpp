@@ -2,6 +2,13 @@
 #include <pcap.h>
 #include "ethhdr.h"
 #include "arphdr.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 #pragma pack(push, 1)
 struct EthArpPacket final {
@@ -15,8 +22,48 @@ void usage() {
 	printf("sample : send-arp wlan0 192.168.10.2 192.168.10.1\n");
 }
 
+char* getMacAddress(const char *interface) {
+    int sockfd;
+    struct ifreq ifr;
+    char *macAddress = (char*)malloc(18);
+
+    if (macAddress == NULL) {
+        perror("메모리 할당 실패");
+        exit(1);
+    }
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("socket");
+        free(macAddress); // 할당된 메모리 해제
+        return NULL;
+    }
+
+    strncpy(ifr.ifr_name, interface, IFNAMSIZ - 1);
+    ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+
+    if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) < 0) {
+        perror("ioctl");
+        close(sockfd);
+        free(macAddress); // 할당된 메모리 해제
+        return NULL;
+    }
+
+    close(sockfd);
+
+    sprintf(macAddress, "%02X:%02X:%02X:%02X:%02X:%02X",
+            (unsigned char)ifr.ifr_hwaddr.sa_data[0],
+            (unsigned char)ifr.ifr_hwaddr.sa_data[1],
+            (unsigned char)ifr.ifr_hwaddr.sa_data[2],
+            (unsigned char)ifr.ifr_hwaddr.sa_data[3],
+            (unsigned char)ifr.ifr_hwaddr.sa_data[4],
+            (unsigned char)ifr.ifr_hwaddr.sa_data[5]);
+
+    return macAddress;
+}
+
 int main(int argc, char* argv[]) {
-	if (argc != 2) {
+	if (argc % 2 != 0) {
 		usage();
 		return -1;
 	}
@@ -28,6 +75,8 @@ int main(int argc, char* argv[]) {
 		fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
 		return -1;
 	}
+
+	char *macAddress = getMacAddress(dev);
 
 	EthArpPacket packet;
 
