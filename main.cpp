@@ -25,7 +25,7 @@ void usage() {
 char* getMacAddress(const char *interface) {
     int sockfd;
     struct ifreq ifr;
-    char *macAddress = (char*)malloc(18);
+    char *macAddress = (char*)malloc(18); // MAC 주소의 길이는 17바이트 + NULL 문자(\0) 1바이트
 
     if (macAddress == NULL) {
         perror("메모리 할당 실패");
