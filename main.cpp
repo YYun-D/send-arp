@@ -133,6 +133,11 @@ int main(int argc, char* argv[]) {
 		struct pcap_pkthdr* header;
 		const u_char* pkt_data;
 		int res_recv = pcap_next_ex(handle, &header, &pkt_data);
+		if (res_recv == 0) continue;
+		if (res_recv == PCAP_ERROR || res_recv == PCAP_ERROR_BREAK) {
+			printf("pcap_next_ex return %d(%s)\n", res_recv, pcap_geterr(handle));
+			break;
+		}
 		struct ethhdr* eth_hdr = (struct ethhdr*)(pkt_data);
 		sprintf(sender_mac, "%02x:%02x:%02x:%02x:%02x:%02x",
 				eth_hdr->h_source[0], eth_hdr->h_source[1], eth_hdr->h_source[2],
